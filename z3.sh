@@ -204,7 +204,13 @@ say '* Z3: Linking'; {
     emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 } >> "$LOGFILE" 2>&1
 
+mkdir "$Z3_SMT2_ROOT"
+cd "$Z3_SMT2_ROOT"
 
+say '* Z3 smt2 client: Linking'; {
+    emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
+    emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
+} >> "$LOGFILE" 2>&1
 
 say ""
 say '*********************************'
