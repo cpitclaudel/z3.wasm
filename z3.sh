@@ -20,75 +20,78 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
+# Note:
+# I you see an error like this:
+#
+#    /vagrant/z3-js/emsdk-portable/clang/e1.37.36_64bit/llc:
+#    /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not
+#    found (required by /vagrant/z3-js/emsdk-portable/clang/e1.37.36_64bit/llc)
+#
+# Then upgrade to a more recent Ubuntu box
+
 : "${BASEDIR:=/vagrant}"
 export LOGFILE="$BASEDIR/provision.log"
 export DEBIAN_FRONTEND=noninteractive
 
-export JS_ROOT="$BASEDIR/cvc4-js/"
-export CVC4_ROOT="${JS_ROOT}CVC4/"
+export JS_ROOT="$BASEDIR/z3-js/"
+export Z3_ROOT="${JS_ROOT}z3/"
 export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
-export ANTLRC_ROOT="${JS_ROOT}libantlr3c-3.2/"
 export LIBGMP_ROOT="${JS_ROOT}gmp-6.1.2/"
-export CLN_ROOT="${JS_ROOT}cln-1.3.4/"
-export INCLUDE_ROOT="${JS_ROOT}include/"
+export Z3_SMT2_ROOT="${JS_ROOT}z3-smt2/"
 
 export OPTLEVEL=3
 
+function say() {
+    date >> "$LOGFILE"
+    echo "$1" | tee -a "$LOGFILE"
+}
+
 echo "" > "$LOGFILE"
-echo "* Starting; see ${LOGFILE} for details."
+say "* Starting; see ${LOGFILE} for details."
 
-echo ""
-echo '*********************************'
-echo '***  Installing dependencies  ***'
-echo '*********************************'
+say ""
+say '*********************************'
+say '***  Installing dependencies  ***'
+say '*********************************'
 
-echo '* apt-get update'; {
-    sudo add-apt-repository -y ppa:ubuntu-elisp/ppa
+say '* apt-get update'; {
     sudo apt-get -y -q update
 } >> "$LOGFILE" 2>&1
-echo '* apt-get install (VBox extensions)'; {
+say '* apt-get install (VBox extensions)'; {
     sudo apt-get -y -q install virtualbox-guest-dkms virtualbox-guest-utils
 } >> "$LOGFILE" 2>&1
-echo '* apt-get install (Dependencies)'; {
-    sudo apt-get -y -q install git build-essential lunzip antlr3.2 python2.7 cmake autoconf libtool libboost-dev
+say '* apt-get install (Dependencies)'; {
+    sudo apt-get -y -q install git build-essential lzip python2.7 cmake autoconf libtool
     sudo ln -s /usr/bin/python2.7 /usr/bin/python
+    sudo ln -s /usr/bin/python2.7 /usr/bin/python2
 } >> "$LOGFILE" 2>&1
 
-echo ""
-echo '*******************'
-echo '*** Downloading ***'
-echo '*******************'
+say ""
+say '*******************'
+say '*** Downloading ***'
+say '*******************'
 
+rm -rf "$JS_ROOT"
 mkdir "$JS_ROOT"
 
-echo '* wget emscripten'; {
+say '* wget emscripten'; {
     wget --quiet -O /tmp/emsdk-portable.tar.gz https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
     tar -xf /tmp/emsdk-portable.tar.gz -C "$JS_ROOT"
 } >> "$LOGFILE" 2>&1
 
-echo '* wget ANTLR C runtime'; {
-    wget --quiet -O /tmp/libantlr3c-3.2.tar.gz http://www.antlr3.org/download/C/libantlr3c-3.2.tar.gz
-    tar -xf /tmp/libantlr3c-3.2.tar.gz -C "$JS_ROOT"
-} >> "$LOGFILE" 2>&1
-
-echo '* wget libGMP'; {
+say '* wget libGMP'; {
     wget --quiet -O /tmp/gmp-6.1.2.tar.lz https://gmplib.org/download/gmp/gmp-6.1.2.tar.lz
     tar -xf /tmp/gmp-6.1.2.tar.lz -C "$JS_ROOT"
 } >> "$LOGFILE" 2>&1
 
-echo '* wget CLN'; {
-    wget --quiet -O /tmp/cln-1.3.4.tar.bz2 https://ginac.de/CLN/cln-1.3.4.tar.bz2
-    tar -xf /tmp/cln-1.3.4.tar.bz2 -C "$JS_ROOT"
+say '* git clone z3'; {
+    git clone --depth 1 --quiet https://github.com/Z3Prover/z3.git "$Z3_ROOT"
 } >> "$LOGFILE" 2>&1
 
-echo '* git clone cvc4'; {
-    git clone --depth 1 --quiet https://github.com/CVC4/CVC4.git "$CVC4_ROOT"
-} >> "$LOGFILE" 2>&1
-
-echo ""
-echo '****************'
-echo '*** Building ***'
-echo '****************'
+say ""
+say '****************'
+say '*** Building ***'
+say '****************'
 
 cd "$EMSDK_ROOT"
 
@@ -97,131 +100,113 @@ cd "$EMSDK_ROOT"
 # https://stackoverflow.com/questions/25197570/llvm-clang-compile-error-with-memory-exhausted
 sudo ln -s "$(which gold)" /usr/local/bin/ld
 
-echo '* emscripten (slow!)'; {
+say '* emscripten (slow!)'; {
     ./emsdk update
     ./emsdk install latest --build=Release
     ./emsdk activate latest
 
-    # See https://github.com/kripken/emscripten/pull/5239/
-    ./emsdk install emscripten-incoming-32bit --build=Release
-    ./emsdk activate emscripten-incoming-32bit
+    # Use incoming because of https://github.com/kripken/emscripten/pull/5239
+    # ./emsdk install emscripten-incoming-32bit --build=Release
+    # ./emsdk activate emscripten-incoming-32bit
 
     # Needed by emcc
     sed -i "s/NODE_JS *= *'\(.*\)'/NODE_JS=['\1','--stack_size=8192']/" ~/.emscripten
-    source ./emsdk_env.sh
+    source "${EMSDK_ROOT}/emsdk_env.sh"
+
+    # Work around https://github.com/kripken/emscripten/pull/5967
+    sed -i 's/python %s/%s/g' "$EMSCRIPTEN/tools/shared.py"
 } >> "$LOGFILE" 2>&1
 
 cd "$LIBGMP_ROOT"
 
-echo '* libgmp: configure'; {
+say '* libgmp: configure'; {
     emconfigure ./configure --with-pic --disable-assembly --disable-fft --disable-shared
 } >> "$LOGFILE" 2>&1
 
-echo '* libgmp: make'; {
+say '* libgmp: make'; {
     emmake make -j4
 } >> "$LOGFILE" 2>&1
 
-cd "$CLN_ROOT"
+cd "$Z3_ROOT"
 
-echo '* CLN: configure'; {
-    # FIXME --with-gmp="${LIBGMP_ROOT}" needs a folder with lib/ and include/
-    emconfigure ./configure --without-gmp --enable-static --disable-shared
+Z3_CONFIGURE_ENV=(CPPFLAGS="-I${LIBGMP_ROOT}"
+                  LDFLAGS="-L${LIBGMP_ROOT}.libs")
+Z3_CONFIGURE_OPTS=(--staticlib --staticbin --noomp --x86)
+
+say '* Z3: configure'; {
+    env "${Z3_CONFIGURE_ENV[@]}" emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
 } >> "$LOGFILE" 2>&1
 
-echo '* CLN: make'; {
-    emmake make -j4
+say '* Z3: make standalone (slow!)'; {
+    emmake make -C build -j4
 } >> "$LOGFILE" 2>&1
 
-cd "$ANTLRC_ROOT"
+# Shared options
+EMCC_OPTIONS=(
+    -s INVOKE_RUN=0 # Don't call main automatically
 
-echo '* ANTLR C runtime: configure'; {
-    emconfigure ./configure --with-pic --disable-abiflags --disable-antlrdebug --disable-64bit --disable-shared
-} >> "$LOGFILE" 2>&1
+    # Don't pollute the global namespace
+    -s MODULARIZE=1
+    -s EXPORT_NAME="'Z3'"
 
-echo '* ANTLR C runtime: make'; {
-    emmake make -j4
-} >> "$LOGFILE" 2>&1
+    # Catch errors early
+    -s STRICT=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1
 
-cd "$CVC4_ROOT"
+    # Avoid various aborts
+    # 200000: 16.70s, 14.92s, 15883 lines in __ZN19iz3translation_full14translate_mainE5ast_rb
+    #  50000: 16.48s, 18.74s, 5559 lines in __ZN16fpa2bv_converter5roundEP4sortR7obj_refI4expr11ast_managerES6_S6_S6_S6_
+    #  10000: 15.29s, 17.05s, no warnings
+    -s OUTLINING_LIMIT=10000 # Avoid “excessive recursion” errors at js parsing time
+    #                        # (But beware: excessively low values cause stack overflows in the program itself)
+    -s DISABLE_EXCEPTION_CATCHING=0 # Let program catch exceptions
+    -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=1 # Allow dynamic memory resizing
+)
 
-# "Move" boost to a separate folder where it can live on its own, to prevent
-# cmake from assuming `-l/usr/include` (which confuses emscripten, since it
-# causes other system libraries to be selected in preference to emscripten ones)
-# http://vclf.blogspot.com/2014/08/emscripten-linking-to-boost-libraries.html
-mkdir -p "${INCLUDE_ROOT}"
-ln -s /usr/include/boost/ "${INCLUDE_ROOT}"
+# Options for standalone, full Z3 builds
+EMCC_Z3_OPTIONS=(
+    ${EMCC_OPTIONS[@]}
 
-CVC4_CONFIGURE_OPTS=(--with-antlr-dir="${ANTLRC_ROOT}" --with-boost="${INCLUDE_ROOT}"
-                     --enable-static --enable-static-binary --enable-static-boost
-                     --disable-maintainer-mode --disable-doxygen-doc
-                     --disable-tracing --disable-assertions
-                     --disable-debug-symbols --disable-unit-testing
-                     --disable-thread-support --enable-language-bindings=
-                     # --disable-statistics --disable-replay  --disable-proof  --disable-dumping
-                     --with-build=production)
+    -s EXPORTED_FUNCTIONS='["_main"]'
+    -s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS"]'
 
-CVC4_CONFIGURE_ENV=(ANTLR="$(which antlr3.2)"
-                    CPPFLAGS="-I${LIBGMP_ROOT} -I${ANTLRC_ROOT}"
-                    LDFLAGS="-L${LIBGMP_ROOT}.libs -L${ANTLRC_ROOT}.libs")
+    # Enable this to exit fully after main completes
+    # https://github.com/kripken/emscripten/commit/f585dcbc2d929ef8b8bc6813e0710ec3215ac0b1
+    -s NO_EXIT_RUNTIME=0
 
-echo '* CVC4: configure'; {
-    env "${CVC4_CONFIGURE_ENV[@]}" emconfigure ./configure --config-cache "${CVC4_CONFIGURE_OPTS[@]}"
-} >> "$LOGFILE" 2>&1
+    # Add this to make it possible to run the test suite (it's
+    # normally included by default, but “-s STRICT=1” disables it)
+    -l "nodefs.js"
+)
 
-echo '* CVC4: make (slow!)'; {
-    emmake make -j4
-} >> "$LOGFILE" 2>&1
+# Options for the small SMT2 client
+EMCC_Z3_SMT2_OPTIONS=(
+    ${EMCC_OPTIONS[@]}
+    -s EXPORTED_FUNCTIONS='["_smt2Init", "_smt2SetParam", "_smt2Ask", "_smt2Destroy"]'
+    -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "allocateUTF8", "writeAsciiToMemory"]'
+    -O${OPTLEVEL} -fPIC -I src/api/
+)
 
+EMCC_WASM_OPTIONS=(
+    -s WASM=1
+    # Async compilation causes Firefox to infloop, repeatedly printing “still
+    # waiting on run dependencies: dependency: wasm-instantiate”. We'll run
+    # in a WebWorker anyway, so it wouldn't buy us much.
+    -s BINARYEN_ASYNC_COMPILATION=0)
 
-BUILD_DIR=$(grep -P "CURRENT_BUILD = .*" builds/current | sed 's/CURRENT_BUILD = //')
-
-EMCC_OPTIONS=(-s INVOKE_RUN=0 # Don't call main automatically
-              -s NO_EXIT_RUNTIME=1 # Don't exit fully, otherwise main() can only be called once
-
-              # Generate a single file (this way the generated code doesn't need asynchronous loading)
-              # Doesn't work for WASM
-              # --memory-init-file 0
-
-              -s STRICT=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1 # Catch errors early
-
-              # Don't pollute the global namespace
-              -s EXPORTED_FUNCTIONS='["_main"]' -s MODULARIZE=1
-              -s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS"]'
-
-              # Avoid various aborts
-              -s OUTLINING_LIMIT=200000 # Avoid “excessive recursion” errors at js parsing time
-              # (But beware: too low values cause stack overflows in the program itself)
-              -s DISABLE_EXCEPTION_CATCHING=0 # Let CVC4 catch exceptions
-              -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=1 # Allow dynamic memory resizing
-
-              # This makes it possible to run the test suite (it's normally
-              # included by default, but “-s STRICT=1” disables it)
-              -l "nodefs.js")
-
-EMCC_WASM_OPTIONS=(-s WASM=1
-                   # No need for async compilation: it's broken (see notes) and
-                   # we'll run in a WebWorker anyway
-                   -s BINARYEN_ASYNC_COMPILATION=0)
-
-EMCC_JS_INPUTS=(cvc4.bc
-                ../gmp-6.1.2/.libs/libgmp.a
-                ../libantlr3c-3.2/.libs/libantlr3c.a)
+EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc") #  ${LIBGMP_ROOT}/.libs/libgmp.a
+EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
 
 ulimit -s unlimited
 
-echo '* CVC4: Linking javascript'; {
-    cp "builds/${BUILD_DIR}/src/main/cvc4" cvc4.bc
-    emcc "${EMCC_OPTIONS[@]}" -s EXPORT_NAME="'CVC4'" -O${OPTLEVEL} "${EMCC_JS_INPUTS[@]}" -o cvc4.js
-    emcc "${EMCC_OPTIONS[@]}" -s EXPORT_NAME="'CVC4'" -O${OPTLEVEL} "${EMCC_JS_INPUTS[@]}" "${EMCC_WASM_OPTIONS[@]}" -o cvc4-wasm.js
+say '* Z3: Linking'; {
+    cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
+    emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
+    emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 } >> "$LOGFILE" 2>&1
 
 
-# emcc "${EMCC_OPTIONS[@]}" -s EXPORT_NAME="'CVC4'" -O${OPTLEVEL} "${EMCC_JS_INPUTS[@]}" -o cvc4.js
 
-echo ""
-echo '*********************************'
-echo '***       Setup complete      ***'
-echo '*********************************'
-
-echo ""
-echo "Log into the VM using ‘vagrant ssh’."
+say ""
+say '*********************************'
+say '***       Setup complete      ***'
+say '*********************************'
