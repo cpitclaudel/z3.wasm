@@ -36,7 +36,6 @@ export DEBIAN_FRONTEND=noninteractive
 export JS_ROOT="$BASEDIR/z3-js/"
 export Z3_ROOT="${JS_ROOT}z3/"
 export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
-export LIBGMP_ROOT="${JS_ROOT}gmp-6.1.2/"
 export Z3_SMT2_ROOT="${JS_ROOT}z3-smt2/"
 
 export OPTLEVEL=3
@@ -79,11 +78,6 @@ say '* wget emscripten'; {
     tar -xf /tmp/emsdk-portable.tar.gz -C "$JS_ROOT"
 } >> "$LOGFILE" 2>&1
 
-say '* wget libGMP'; {
-    wget --quiet -O /tmp/gmp-6.1.2.tar.lz https://gmplib.org/download/gmp/gmp-6.1.2.tar.lz
-    tar -xf /tmp/gmp-6.1.2.tar.lz -C "$JS_ROOT"
-} >> "$LOGFILE" 2>&1
-
 say '* git clone z3'; {
     git clone --depth 1 --quiet https://github.com/Z3Prover/z3.git "$Z3_ROOT"
 } >> "$LOGFILE" 2>&1
@@ -117,24 +111,12 @@ say '* emscripten (slow!)'; {
     sed -i 's/python %s/%s/g' "$EMSCRIPTEN/tools/shared.py"
 } >> "$LOGFILE" 2>&1
 
-cd "$LIBGMP_ROOT"
-
-say '* libgmp: configure'; {
-    emconfigure ./configure --with-pic --disable-assembly --disable-fft --disable-shared
-} >> "$LOGFILE" 2>&1
-
-say '* libgmp: make'; {
-    emmake make -j4
-} >> "$LOGFILE" 2>&1
-
 cd "$Z3_ROOT"
 
-Z3_CONFIGURE_ENV=(CPPFLAGS="-I${LIBGMP_ROOT}"
-                  LDFLAGS="-L${LIBGMP_ROOT}.libs")
 Z3_CONFIGURE_OPTS=(--staticlib --staticbin --noomp --x86)
 
 say '* Z3: configure'; {
-    env "${Z3_CONFIGURE_ENV[@]}" emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
+    emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
 } >> "$LOGFILE" 2>&1
 
 say '* Z3: make standalone (slow!)'; {
@@ -193,14 +175,14 @@ EMCC_WASM_OPTIONS=(
     # in a WebWorker anyway, so it wouldn't buy us much.
     -s BINARYEN_ASYNC_COMPILATION=0)
 
-EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc") #  ${LIBGMP_ROOT}/.libs/libgmp.a
+EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc")
 EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
 
 ulimit -s unlimited
 
 say '* Z3: Linking'; {
     cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
-    emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
+    # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
     emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 } >> "$LOGFILE" 2>&1
 
@@ -208,7 +190,7 @@ mkdir "$Z3_SMT2_ROOT"
 cd "$Z3_SMT2_ROOT"
 
 say '* Z3 smt2 client: Linking'; {
-    emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
+    # emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
     emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
 } >> "$LOGFILE" 2>&1
 
