@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Z3.wasm demo</title>
+    <link rel="stylesheet" href="z3.css">
+    <script src="./demo.js"></script>
+  </head>
+  <body>
+    <div id="main">
+      <h1>Z3.wasm</h1>
+
+      <div id="editor">(declare-fun x () Int)
+(declare-fun y () Int)
+(declare-fun z () Int)
+(assert (>= (* 2 x) (+ y z)))
+(declare-fun f (Int) Int)
+(declare-fun g (Int Int) Int)
+(assert (< (f x) (g x x)))
+(assert (> (f y) (g x x)))
+(check-sat)
+(get-model)
+(push)
+(assert (= x y))
+(check-sat)
+(get-model)
+(check-sat)
+(pop)
+(exit)</div>
+
+      <hr />
+
+      <div id="control-panel">
+        <div class="row">
+          <input class="cell" id="command-line-args" type="text" value="-smt2" />
+          <span id="run-cell"><input id="run" type="button" value="" disabled="disabled" /></span>
+        </div>
+      </div>
+      <pre id="stdout"></pre>
+
+      <div id="footer">
+        Assembled by <a href="http://pit-claudel.fr/clement/">Clément Pit-Claudel</a> by compiling Z3 with <a href="http://kripken.github.io/emscripten-site/">Emscripten</a>.
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js" integrity="sha256-xrr4HH5eSY+cFz4SH7ja/LaAi9qcEdjMpeMP49/iOLs=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/mode-lisp.js" integrity="sha256-wfwED8MuFsljraPmCVHtcP7jjyi6ffnB1kk1kY2ha5g=" crossorigin="anonymous"></script>
+    <script src="./protocol.js"></script>
+
+    <script>
+      makeZ3Demo(window, queries, responses, ace).init();
+    </script>
+  </body>
+</html>

@@ -1,3 +1,5 @@
 /z3-js/
 /.vagrant/
 /provision.log
+/html/z3w.wasm
+/html/z3w.js
