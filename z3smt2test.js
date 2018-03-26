@@ -12,31 +12,32 @@ var ctx = smt2API.init();
 
 smt2API.setParam("model", "true");
 smt2API.setParam("auto_config", "false");
-smt2API.setParam("smt.random_seed", "0");
-smt2API.setParam("smt.case_split", "3");
-smt2API.setParam("smt.relevancy", "2");
-smt2API.setParam("smt.mbqi", "false");
+smt2API.setParam("smtlib2_compliant", "false");
+
+function say(msg) {
+    process.stdout.write(msg || "");
+}
 
 // var fs = require("fs");
 // var query = fs.readFileSync("input.smt2", {encoding: "utf-8"});
-// console.log(query);
-// console.log("result", smt2API.ask(ctx, query));
-console.log(smt2API.ask(ctx, "(declare-fun x () Int)"));
-console.log(smt2API.ask(ctx, "(declare-fun y () Int)"));
-console.log(smt2API.ask(ctx, "(declare-fun z () Int)"));
-console.log(smt2API.ask(ctx, "(assert (>= (* 2 x) (+ y z)))"));
-console.log(smt2API.ask(ctx, "(declare-fun f (Int) Int)"));
-console.log(smt2API.ask(ctx, "(declare-fun g (Int Int) Int)"));
-console.log(smt2API.ask(ctx, "(assert (< (f x) (g x x)))"));
-console.log(smt2API.ask(ctx, "(assert (> (f y) (g x x)))"));
-console.log(smt2API.ask(ctx, "(check-sat)"));
-console.log(smt2API.ask(ctx, "(get-model)"));
-console.log(smt2API.ask(ctx, "(push)"));
-console.log(smt2API.ask(ctx, "(assert (= x y))"));
-console.log(smt2API.ask(ctx, "(check-sat)"));
-console.log(smt2API.ask(ctx, "(get-model)"));
-console.log(smt2API.ask(ctx, "(check-sat)"));
-console.log(smt2API.ask(ctx, "(pop)"));
-console.log(smt2API.ask(ctx, "(exit)"));
+// say(query);
+// say("result", smt2API.ask(ctx, query));
+say(smt2API.ask(ctx, "(declare-fun x () Int)"));
+say(smt2API.ask(ctx, "(declare-fun y () Int)"));
+say(smt2API.ask(ctx, "(declare-fun z () Int)"));
+say(smt2API.ask(ctx, "(assert (>= (* 2 x) (+ y z)))"));
+say(smt2API.ask(ctx, "(declare-fun f (Int) Int)"));
+say(smt2API.ask(ctx, "(declare-fun g (Int Int) Int)"));
+say(smt2API.ask(ctx, "(assert (< (f x) (g x x)))"));
+say(smt2API.ask(ctx, "(assert (> (f y) (g x x)))"));
+say(smt2API.ask(ctx, "(check-sat)"));
+say(smt2API.ask(ctx, "(get-model)"));
+say(smt2API.ask(ctx, "(push)"));
+say(smt2API.ask(ctx, "(assert (= x y))"));
+say(smt2API.ask(ctx, "(check-sat)"));
+say(smt2API.ask(ctx, "(get-model)"));
+say(smt2API.ask(ctx, "(check-sat)"));
+say(smt2API.ask(ctx, "(pop)"));
+say(smt2API.ask(ctx, "(exit)"));
 
-console.log(smt2API.destroy(ctx));
+smt2API.destroy(ctx);

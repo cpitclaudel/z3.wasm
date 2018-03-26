@@ -6,6 +6,7 @@ void smt2HandleError(Z3_context c, Z3_error_code e) {
   // in the output returned by Z3_eval_smtlib2_string).
 }
 
+// Create a fresh SMT2 context
 Z3_context smt2Init() {
     Z3_config cfg = Z3_mk_config();
     Z3_context ctx = Z3_mk_context(cfg);
@@ -14,14 +15,17 @@ Z3_context smt2Init() {
     return ctx;
 }
 
+// Globally set `option` to `value`.
 void smt2SetParam(const char* option, const char* value) {
   Z3_global_param_set(option, value);
 }
 
+// Send `query` to `ctx` and fetch the response as a string.
 const char* smt2Ask(Z3_context ctx, const char* query) {
   return Z3_eval_smtlib2_string(ctx, query);
 }
 
+// Release the resources used by `ctx`.
 void smt2Destroy(Z3_context ctx) {
   Z3_del_context(ctx);
 }
