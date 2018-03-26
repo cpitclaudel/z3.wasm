@@ -153,7 +153,7 @@ EMCC_Z3_OPTIONS=(
 
     # Enable this to exit fully after main completes
     # https://github.com/kripken/emscripten/commit/f585dcbc2d929ef8b8bc6813e0710ec3215ac0b1
-    -s NO_EXIT_RUNTIME=0
+    # -s NO_EXIT_RUNTIME=0
 
     # Add this to make it possible to run the test suite (it's
     # normally included by default, but “-s STRICT=1” disables it)
