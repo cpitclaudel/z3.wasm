@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
-process.chdir("./z3-wasm/z3/"); // To find the WASM file
-var Z3Factory = require("./z3-wasm/z3/z3w.js");
+process.chdir("./build/z3/"); // To find the WASM file
+var Z3Factory = require("./build/z3/z3w.js");
 var z3 = Z3Factory();
 
 var FS = z3["FS"];

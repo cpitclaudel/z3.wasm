@@ -11,20 +11,24 @@ Pre-build archives are available at https://github.com/cpitclaudel/z3.wasm/relea
 Building
 ========
 
+In a VM
+-------
+
 Install `Vagrant <https://www.vagrantup.com/>`_, then run this::
 
    vagrant up
    vagrant ssh
    VAGRANT=true /vagrant/z3.sh
 
-The first build can take up to two hours (emscripten may require a custom build of LLVM, Z3 is large, and all of this is running in a VM).
-The output is written to ``z3w.js``, ``z3w.wasm``, ``z3smt2w.js``, and ``z3smt2w.wasm``.
+The first build can take up to two hours (emscripten may require a custom build of LLVM, Z3 is large, and all of this is running in a VM).  The output (``z3w.js``, ``z3w.wasm``, ``z3smt2w.js``, and ``z3smt2w.wasm``) is written to ``build/z3/``.
 
-On Debian/Ubuntu systems, you may prefer to run natively (the build will be much faster)::
+Some Vagrant configurations can cause clang to crash or Vagrant to hang.
+Building on a physical machine is the most reliable workaround.
 
-   BASEDIR="$(pwd)/build/" ./z3.sh
+Natively
+--------
 
-Some Vagrant configurations can cause clang to crash; in that case, building on a physical machine is the best workaround.
+On Debian/Ubuntu systems, you may prefer to build natively, which will be much faster.  In that case, just run ``./z3.sh``, which will place all outputs in ``build/``.
 
 Using the generated code
 ========================
@@ -61,7 +65,7 @@ From a webpage the process is roughly the same: write Z3's input to a file using
 
 This is all demoed in ``html/z3.html`` (that example also uses a WebWorker to run Z3, keeping the page responsive while it runs).  Try it like this::
 
-  cp z3-wasm/z3/z3w.js z3-wasm/z3/z3w.wasm ./html
+  cp build/z3/z3w.js build/z3/z3w.wasm ./html
   python3 -m http.server
   # Open your browser to http://localhost:8000/html/z3.html
 

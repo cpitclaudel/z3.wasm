@@ -1,7 +1,8 @@
-/z3-wasm/
 /.vagrant/
-/provision.log
-/html/z3w.wasm
-/html/z3w.js
+/build/
 /dist/
+/html/z3w.js
+/html/z3w.wasm
+/provision.log
+/upload.sh
 /z3.wasm.tar.gz

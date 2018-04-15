@@ -22,13 +22,11 @@
 
 # Notes:
 #
-# * If you see an error like this:
+# * If you see an error like this, upgrade to a more recent Ubuntu box:
 #
-#       /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc:
+#       /vagrant/build/emsdk-portable/clang/e1.37.36_64bit/llc:
 #       /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not
-#       found (required by /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc)
-#
-#   Then upgrade to a more recent Ubuntu box
+#       found (required by /vagrant/build/emsdk-portable/clang/e1.37.36_64bit/llc)
 #
 # * This script is only know to work on Ubuntu. You can run it locally, but in
 #   that case DO NOT set VAGRANT=true.
@@ -36,20 +34,16 @@
 : "${VAGRANT:=false}"
 
 if [ "$VAGRANT" = true ]; then
-    : "${BASEDIR:=/vagrant}"
+    : "${BASEDIR:=/vagrant/}"
 else
-    : "${BASEDIR:=$(pwd)/build}"
+    : "${BASEDIR:=$(pwd)/}"
 fi
-mkdir -p "$BASEDIR"
-
-export DEBIAN_FRONTEND=noninteractive
-
-export JS_ROOT="$BASEDIR/z3-wasm/"
-export Z3_ROOT="${JS_ROOT}z3/"
-export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
-export EMSCRIPTEN_TEMPDIR="/tmp/emscripten"
 
 export OPTLEVEL=3
+export BUILDDIR="${BASEDIR}build/"
+export Z3_ROOT="${BUILDDIR}z3/"
+export EMSDK_ROOT="${BUILDDIR}emsdk-portable/"
+export EMSCRIPTEN_TEMPDIR="/tmp/emscripten/"
 
 function say() {
     printf "\033[1;32m%s\033[0m\n" "$1"
@@ -59,6 +53,8 @@ say ""
 say '*********************************'
 say '***  Installing dependencies  ***'
 say '*********************************'
+
+export DEBIAN_FRONTEND=noninteractive
 
 say '* apt-get update'; {
     sudo apt-get -y -q update
@@ -86,12 +82,12 @@ say '*******************'
 say '*** Downloading ***'
 say '*******************'
 
-rm -rf "$JS_ROOT"
-mkdir "$JS_ROOT"
+rm -rf "$BUILDDIR"
+mkdir "$BUILDDIR"
 
 say '* wget emscripten'; {
     wget --quiet -O /tmp/emsdk-portable.tar.gz https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
-    tar -xf /tmp/emsdk-portable.tar.gz -C "$JS_ROOT"
+    tar -xf /tmp/emsdk-portable.tar.gz -C "$BUILDDIR"
 }
 
 say '* git clone z3'; {
@@ -129,7 +125,7 @@ say '* Emscripten: setup'; {
 
 # Don't source emsdk_env directly, as it produces output that can't be logged
 # without creating a subshell (which would break `source`)
-source "${EMSDK_ROOT}/emsdk_set_env.sh"
+source "${EMSDK_ROOT}emsdk_set_env.sh"
 
 # emcc fails in all sorts of weird ways without this
 ulimit -s unlimited
@@ -138,8 +134,7 @@ say '* Emscripten: stdlib (very slow!)'; {
     mkdir -p "$EMSCRIPTEN_TEMPDIR"
     cd "$EMSCRIPTEN_TEMPDIR"
     printf '#include<stdio.h>\nint main() { return 0; }\n' > minimal.c
-    # Adding to emcc here causes it to crash
-    emcc -v minimal.c
+    emcc minimal.c
 }
 
 cd "$Z3_ROOT"
@@ -204,13 +199,13 @@ EMCC_WASM_OPTIONS=(
     # in a WebWorker anyway, so it wouldn't buy us much.
     -s BINARYEN_ASYNC_COMPILATION=0)
 
-EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc")
-EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
+EMCC_Z3_JS_INPUTS=("${Z3_ROOT}build/z3.bc")
+EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}z3smt2.c" "${Z3_ROOT}build/libz3.a")
 
 cd "$Z3_ROOT"
 
 say '* Z3: Linking (slow!)'; {
-    cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
+    cp "${Z3_ROOT}build/z3" "${Z3_ROOT}build/z3.bc"
     # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
     emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 }
