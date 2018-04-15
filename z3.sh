@@ -23,9 +23,9 @@
 # Note:
 # I you see an error like this:
 #
-#    /vagrant/z3-js/emsdk-portable/clang/e1.37.36_64bit/llc:
+#    /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc:
 #    /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not
-#    found (required by /vagrant/z3-js/emsdk-portable/clang/e1.37.36_64bit/llc)
+#    found (required by /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc)
 #
 # Then upgrade to a more recent Ubuntu box
 
@@ -33,7 +33,7 @@
 export LOGFILE="$BASEDIR/provision.log"
 export DEBIAN_FRONTEND=noninteractive
 
-export JS_ROOT="$BASEDIR/z3-js/"
+export JS_ROOT="$BASEDIR/z3-wasm/"
 export Z3_ROOT="${JS_ROOT}z3/"
 export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
 export Z3_SMT2_ROOT="${JS_ROOT}z3-smt2/"

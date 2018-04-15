@@ -1,10 +1,12 @@
-===========
- ``z3.js``
-===========
+=============
+ ``z3.wasm``
+=============
 
 This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3/>`_ to WebAssembly using `emscripten <https://github.com/kripken/emscripten/>`_.  To make things more reproducible, the entire build happens in a `Vagrant <https://www.vagrantup.com/>` VM (but the build script should be fairly platform-agnostic).
 
-Loading Z3 is fairly slow (~15 seconds on Chrome, &less than 1 second on Firefox), but verification typically is within a factor 2 to 5 of native performance.
+Loading Z3 is fairly slow (~15 seconds on Chrome, though less than 1 second on Firefox), but verification typically is within a factor 2 to 5 of native performance.
+
+Pre-build archives are available at https://github.com/cpitclaudel/z3.wasm/releases.
 
 Building
 ========
@@ -13,7 +15,7 @@ Install `Vagrant <https://www.vagrantup.com/>`_, then run this::
 
    vagrant up
    vagrant ssh
-   ./z3.sh
+   /vagrant/z3.sh
 
 A detailed log is written to ``provision.log``, with an outline printed to stdout.  The first build can take up to two hours (emscripten requires a custom build of LLVM, Z3 is large, and all of this is running in a VM).
 
@@ -54,10 +56,9 @@ From a webpage the process is roughly the same: write Z3's input to a file using
 
 This is all demoed in ``html/z3.html`` (that example also uses a WebWorker to run Z3, keeping the page responsive while it runs).  Try it like this::
 
-  cd html
-  cp ../z3-js/z3/z3w.js ../z3-js/z3/z3w.wasm ./
+  cp z3-wasm/z3/z3w.js z3-wasm/z3/z3w.wasm ./html
   python3 -m http.server
-  # Open your browser to http://localhost:8000/z3.html
+  # Open your browser to http://localhost:8000/html/z3.html
 
 ``z3smt2w.js``
 --------------
