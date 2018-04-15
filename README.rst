@@ -2,7 +2,7 @@
  ``z3.wasm``
 =============
 
-This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3/>`_ to WebAssembly using `emscripten <https://github.com/kripken/emscripten/>`_.  To make things more reproducible, the entire build happens in a `Vagrant <https://www.vagrantup.com/>` VM (but the build script should be fairly platform-agnostic).
+This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3/>`_ to WebAssembly using `emscripten <https://github.com/kripken/emscripten/>`_.  To make things more reproducible, the build script may be run in a `Vagrant <https://www.vagrantup.com/>` VM.
 
 Loading Z3 is fairly slow (~15 seconds on Chrome, though less than 1 second on Firefox), but verification typically is within a factor 2 to 5 of native performance.
 
@@ -17,9 +17,14 @@ Install `Vagrant <https://www.vagrantup.com/>`_, then run this::
    vagrant ssh
    VAGRANT=true /vagrant/z3.sh
 
-A detailed log is written to ``provision.log``, with an outline printed to stdout.  The first build can take up to two hours (emscripten requires a custom build of LLVM, Z3 is large, and all of this is running in a VM).
-
+The first build can take up to two hours (emscripten may require a custom build of LLVM, Z3 is large, and all of this is running in a VM).
 The output is written to ``z3w.js``, ``z3w.wasm``, ``z3smt2w.js``, and ``z3smt2w.wasm``.
+
+On Debian/Ubuntu systems, you may prefer to run natively (the build will be much faster)::
+
+   BASEDIR="$(pwd)/build/" ./z3.sh
+
+Some Vagrant configurations can cause clang to crash; in that case, building on a physical machine is the best workaround.
 
 Using the generated code
 ========================

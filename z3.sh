@@ -33,8 +33,15 @@
 # * This script is only know to work on Ubuntu. You can run it locally, but in
 #   that case DO NOT set VAGRANT=true.
 
-: "${BASEDIR:=/vagrant}"
 : "${VAGRANT:=false}"
+
+if [ "$VAGRANT" = true ]; then
+    : "${BASEDIR:=/vagrant}"
+else
+    : "${BASEDIR:=$(pwd)/build}"
+fi
+mkdir -p "$BASEDIR"
+
 export DEBIAN_FRONTEND=noninteractive
 
 export JS_ROOT="$BASEDIR/z3-wasm/"
@@ -200,6 +207,8 @@ EMCC_WASM_OPTIONS=(
 EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc")
 EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
 
+cd "$Z3_ROOT"
+
 say '* Z3: Linking (slow!)'; {
     cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
     # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
@@ -213,5 +222,5 @@ say '* Z3 smt2 client: Linking (slow!)'; {
 
 say ""
 say '*********************************'
-say '***       Setup complete      ***'
+say '***       Build complete      ***'
 say '*********************************'
