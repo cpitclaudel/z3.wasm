@@ -36,7 +36,6 @@ export DEBIAN_FRONTEND=noninteractive
 export JS_ROOT="$BASEDIR/z3-wasm/"
 export Z3_ROOT="${JS_ROOT}z3/"
 export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
-export Z3_SMT2_ROOT="${JS_ROOT}z3-smt2/"
 
 export OPTLEVEL=3
 
@@ -56,13 +55,13 @@ say '*********************************'
 say '* apt-get update'; {
     sudo apt-get -y -q update
 } >> "$LOGFILE" 2>&1
-say '* apt-get install (VBox extensions)'; {
-    sudo apt-get -y -q install virtualbox-guest-dkms virtualbox-guest-utils
-} >> "$LOGFILE" 2>&1
+# say '* apt-get install (VBox extensions)'; {
+#     sudo apt-get -y -q install virtualbox-guest-dkms virtualbox-guest-utils
+# } >> "$LOGFILE" 2>&1
 say '* apt-get install (Dependencies)'; {
     sudo apt-get -y -q install git build-essential lzip python2.7 cmake autoconf libtool
-    sudo ln -s /usr/bin/python2.7 /usr/bin/python
-    sudo ln -s /usr/bin/python2.7 /usr/bin/python2
+    [ ! -f /usr/bin/python  ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python
+    [ ! -f /usr/bin/python2 ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python2
 } >> "$LOGFILE" 2>&1
 
 say ""
@@ -92,9 +91,9 @@ cd "$EMSDK_ROOT"
 # Use gold to minimize memory usage, and build release mode to not run out of memory
 # https://github.com/kripken/emscripten/issues/4667
 # https://stackoverflow.com/questions/25197570/llvm-clang-compile-error-with-memory-exhausted
-sudo ln -s "$(which gold)" /usr/local/bin/ld
+[ ! -f /usr/local/bin/ld ] && sudo ln -s "$(which gold)" /usr/local/bin/ld
 
-say '* emscripten (slow!)'; {
+say '* emscripten (can be slow)'; {
     ./emsdk update
     ./emsdk install latest --build=Release
     ./emsdk activate latest
@@ -126,6 +125,7 @@ say '* Z3: make standalone (slow!)'; {
 # Shared options
 EMCC_OPTIONS=(
     -s INVOKE_RUN=0 # Don't call main automatically
+    -O${OPTLEVEL}
 
     # Don't pollute the global namespace
     -s MODULARIZE=1
@@ -135,11 +135,8 @@ EMCC_OPTIONS=(
     -s STRICT=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1
 
     # Avoid various aborts
-    # 200000: 16.70s, 14.92s, 15883 lines in __ZN19iz3translation_full14translate_mainE5ast_rb
-    #  50000: 16.48s, 18.74s, 5559 lines in __ZN16fpa2bv_converter5roundEP4sortR7obj_refI4expr11ast_managerES6_S6_S6_S6_
-    #  10000: 15.29s, 17.05s, no warnings
-    -s OUTLINING_LIMIT=10000 # Avoid “excessive recursion” errors at js parsing time
-    #                        # (But beware: excessively low values cause stack overflows in the program itself)
+    # -s OUTLINING_LIMIT=10000 # Avoid “excessive recursion” errors at asm.js parsing time
+    #                          # (But beware: excessively low values cause stack overflows in the program itself)
     -s DISABLE_EXCEPTION_CATCHING=0 # Let program catch exceptions
     -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=1 # Allow dynamic memory resizing
 )
@@ -165,7 +162,7 @@ EMCC_Z3_SMT2_OPTIONS=(
     ${EMCC_OPTIONS[@]}
     -s EXPORTED_FUNCTIONS='["_smt2Init", "_smt2SetParam", "_smt2Ask", "_smt2Destroy"]'
     -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "allocateUTF8", "writeAsciiToMemory"]'
-    -O${OPTLEVEL} -fPIC -I src/api/
+    -fPIC -I src/api/
 )
 
 EMCC_WASM_OPTIONS=(
@@ -185,9 +182,6 @@ say '* Z3: Linking'; {
     # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
     emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 } >> "$LOGFILE" 2>&1
-
-mkdir "$Z3_SMT2_ROOT"
-cd "$Z3_SMT2_ROOT"
 
 say '* Z3 smt2 client: Linking'; {
     # emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
