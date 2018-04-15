@@ -17,7 +17,7 @@ Install `Vagrant <https://www.vagrantup.com/>`_, then run this::
 
 A detailed log is written to ``provision.log``, with an outline printed to stdout.  The first build can take up to two hours (emscripten requires a custom build of LLVM, Z3 is large, and all of this is running in a VM).
 
-The output is written to ``z3w.js``, ``z3w.wasm``, ``z3smt2w.js``, and ``z3wsmt2.js``.
+The output is written to ``z3w.js``, ``z3w.wasm``, ``z3smt2w.js``, and ``z3smt2w.wasm``.
 
 Using the generated code
 ========================
@@ -102,9 +102,19 @@ There is a small example script using nodejs for demonstration purposes in the r
 
 Check the source code of F*.js for an example of how to use this in a larger application.
 
-Known issues
-============
+Known issues, tips
+==================
 
 Chrome precompiles WebAssembly programs before running them — this makes startup slow, though verification after that is fast.  The recommendation is to cache compiled modules, but Chrome doesn't (2018-03) allow that yet.
 
-Firefox is much better at this, though the code eventually does run a bit slower.
+Firefox is much better at this, though the code eventually does run a slower.
+
+Compression
+-----------
+
+The limited ``z3smt2.wasm`` is a bit smaller than the full Z3: use that if you can.
+
+On Apache servers, use the following to compress WASM files (gzipping saves about 75%)::
+
+   AddType application/wasm .wasm
+   AddOutputFilterByType DEFLATE application/wasm
