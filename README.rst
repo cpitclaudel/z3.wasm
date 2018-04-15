@@ -6,7 +6,7 @@ This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3
 
 Loading Z3 is fairly slow (~15 seconds on Chrome, though less than 1 second on Firefox), but verification typically is within a factor 2 to 5 of native performance.
 
-Pre-build archives are available at https://github.com/cpitclaudel/z3.wasm/releases.
+Pre-build archives are available at https://github.com/cpitclaudel/z3.wasm/releases.  Demo at https://people.csail.mit.edu/cpitcla/z3.wasm/z3.html.
 
 Building
 ========
