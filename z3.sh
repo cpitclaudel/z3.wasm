@@ -136,13 +136,14 @@ say '* Emscripten: setup'; {
 source "${EMSDK_ROOT}/emsdk_set_env.sh"
 
 # emcc fails in all sorts of weird ways without this
+# Adding $UNBUFFER to emcc also causes it to crash
 ulimit -s unlimited
 
 say '* Emscripten: stdlib (slow!)'; {
     mkdir -p "$EMSCRIPTEN_TEMPDIR"
     cd "$EMSCRIPTEN_TEMPDIR"
     printf '#include<stdio.h>\nint main() { return 0; }\n' > minimal.c
-    $UNBUFFER emcc -v minimal.c
+    emcc -v minimal.c
 } |& log
 
 cd "$Z3_ROOT"
@@ -150,11 +151,11 @@ cd "$Z3_ROOT"
 Z3_CONFIGURE_OPTS=(--staticlib --staticbin --noomp --x86)
 
 say '* Z3: configure (slow!)'; {
-    $UNBUFFER emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
+    emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
 } |& log
 
 say '* Z3: make standalone (slow!)'; {
-    $UNBUFFER emmake make -C build -j4
+    emmake make -C build -j4
 } |& log
 
 # Shared options
@@ -213,12 +214,12 @@ EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
 say '* Z3: Linking'; {
     cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
     # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
-    $UNBUFFER emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
+    emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
 } |& log
 
 say '* Z3 smt2 client: Linking'; {
     # emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
-    $UNBUFFER emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
+    emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
 } |& log
 
 say ""
