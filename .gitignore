@@ -3,3 +3,5 @@
 /provision.log
 /html/z3w.wasm
 /html/z3w.js
+/dist/
+/z3.wasm.tar.gz
