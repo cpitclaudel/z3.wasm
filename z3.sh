@@ -20,28 +20,40 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
-# Note:
-# I you see an error like this:
+# Notes:
 #
-#    /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc:
-#    /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not
-#    found (required by /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc)
+# * If you see an error like this:
 #
-# Then upgrade to a more recent Ubuntu box
+#       /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc:
+#       /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not
+#       found (required by /vagrant/z3-wasm/emsdk-portable/clang/e1.37.36_64bit/llc)
+#
+#   Then upgrade to a more recent Ubuntu box
+#
+# * This script is only know to work on Ubuntu. You can run it locally, but in
+#   that case DO NOT set VAGRANT=true.
 
 : "${BASEDIR:=/vagrant}"
+: "${VAGRANT:=false}"
 export LOGFILE="$BASEDIR/provision.log"
 export DEBIAN_FRONTEND=noninteractive
 
 export JS_ROOT="$BASEDIR/z3-wasm/"
 export Z3_ROOT="${JS_ROOT}z3/"
 export EMSDK_ROOT="${JS_ROOT}emsdk-portable/"
+export EMSCRIPTEN_TEMPDIR="/tmp/emscripten"
 
 export OPTLEVEL=3
 
 function say() {
     date >> "$LOGFILE"
-    echo "$1" | tee -a "$LOGFILE"
+    echo "$1" >> "$LOGFILE"
+    printf "\033[1;32m%s\033[0m\n" "$1"
+}
+
+UNBUFFER="stdbuf -oL -eL"
+function log() {
+    $UNBUFFER tee -a "$LOGFILE" | sed 's/^/  /'
 }
 
 echo "" > "$LOGFILE"
@@ -53,16 +65,25 @@ say '***  Installing dependencies  ***'
 say '*********************************'
 
 say '* apt-get update'; {
-    sudo apt-get -y -q update
-} >> "$LOGFILE" 2>&1
-# say '* apt-get install (VBox extensions)'; {
-#     sudo apt-get -y -q install virtualbox-guest-dkms virtualbox-guest-utils
-# } >> "$LOGFILE" 2>&1
+    $UNBUFFER sudo apt-get -y -q update
+} |& log
+
+if [ "$VAGRANT" = true ]; then
+    say '* apt-get install (VBox extensions)'; {
+        sudo apt-get -y -q install virtualbox-guest-dkms virtualbox-guest-utils
+    } |& log
+fi
+
 say '* apt-get install (Dependencies)'; {
-    sudo apt-get -y -q install git build-essential lzip python2.7 cmake autoconf libtool
-    [ ! -f /usr/bin/python  ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python
-    [ ! -f /usr/bin/python2 ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python2
-} >> "$LOGFILE" 2>&1
+    $UNBUFFER sudo apt-get -y -q install git build-essential lzip python2.7 cmake autoconf libtool
+} |& log
+
+if [ "$VAGRANT" = true ]; then
+    [ ! -f /usr/bin/python   ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python
+    [ ! -f /usr/bin/python2  ] && sudo ln -s /usr/bin/python2.7 /usr/bin/python2
+    [ ! -f /usr/local/bin/ld ] && sudo ln -s "$(which gold)" /usr/local/bin/ld
+    # https://stackoverflow.com/questions/25197570/llvm-clang-compile-error-with-memory-exhausted
+fi
 
 say ""
 say '*******************'
@@ -75,11 +96,11 @@ mkdir "$JS_ROOT"
 say '* wget emscripten'; {
     wget --quiet -O /tmp/emsdk-portable.tar.gz https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
     tar -xf /tmp/emsdk-portable.tar.gz -C "$JS_ROOT"
-} >> "$LOGFILE" 2>&1
+} |& log
 
 say '* git clone z3'; {
     git clone --depth 1 --quiet https://github.com/Z3Prover/z3.git "$Z3_ROOT"
-} >> "$LOGFILE" 2>&1
+} |& log
 
 say ""
 say '****************'
@@ -88,15 +109,13 @@ say '****************'
 
 cd "$EMSDK_ROOT"
 
-# Use gold to minimize memory usage, and build release mode to not run out of memory
+# Build in release mode to not run out of memory
 # https://github.com/kripken/emscripten/issues/4667
-# https://stackoverflow.com/questions/25197570/llvm-clang-compile-error-with-memory-exhausted
-[ ! -f /usr/local/bin/ld ] && sudo ln -s "$(which gold)" /usr/local/bin/ld
 
-say '* emscripten (can be slow)'; {
-    ./emsdk update
-    ./emsdk install latest --build=Release
-    ./emsdk activate latest
+say '* Emscripten: setup'; {
+    $UNBUFFER ./emsdk update
+    $UNBUFFER ./emsdk install latest --build=Release
+    $UNBUFFER ./emsdk activate latest
 
     # Use incoming because of https://github.com/kripken/emscripten/pull/5239
     # ./emsdk install emscripten-incoming-32bit --build=Release
@@ -104,23 +123,39 @@ say '* emscripten (can be slow)'; {
 
     # Needed by emcc
     sed -i "s/NODE_JS *= *'\(.*\)'/NODE_JS=['\1','--stack_size=8192']/" ~/.emscripten
-    source "${EMSDK_ROOT}/emsdk_env.sh"
 
     # Work around https://github.com/kripken/emscripten/pull/5967
     sed -i 's/python %s/%s/g' "$EMSCRIPTEN/tools/shared.py"
-} >> "$LOGFILE" 2>&1
+
+    # Regenerate emsdk_set_env.sh
+    ./emsdk construct_env ""
+} |& log
+
+# Don't source emsdk_env directly, as it produces output that can't be logged
+# without creating a subshell (which would break `source`)
+source "${EMSDK_ROOT}/emsdk_set_env.sh"
+
+# emcc fails in all sorts of weird ways without this
+ulimit -s unlimited
+
+say '* Emscripten: stdlib (slow!)'; {
+    mkdir -p "$EMSCRIPTEN_TEMPDIR"
+    cd "$EMSCRIPTEN_TEMPDIR"
+    printf '#include<stdio.h>\nint main() { return 0; }\n' > minimal.c
+    $UNBUFFER emcc -v minimal.c
+} |& log
 
 cd "$Z3_ROOT"
 
 Z3_CONFIGURE_OPTS=(--staticlib --staticbin --noomp --x86)
 
-say '* Z3: configure'; {
-    emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
-} >> "$LOGFILE" 2>&1
+say '* Z3: configure (slow!)'; {
+    $UNBUFFER emconfigure python scripts/mk_make.py "${Z3_CONFIGURE_OPTS[@]}"
+} |& log
 
 say '* Z3: make standalone (slow!)'; {
-    emmake make -C build -j4
-} >> "$LOGFILE" 2>&1
+    $UNBUFFER emmake make -C build -j4
+} |& log
 
 # Shared options
 EMCC_OPTIONS=(
@@ -175,18 +210,16 @@ EMCC_WASM_OPTIONS=(
 EMCC_Z3_JS_INPUTS=("${Z3_ROOT}/build/z3.bc")
 EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}/z3smt2.c" "${Z3_ROOT}/build/libz3.a")
 
-ulimit -s unlimited
-
 say '* Z3: Linking'; {
     cp "${Z3_ROOT}/build/z3" "${Z3_ROOT}/build/z3.bc"
     # emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3.js
-    emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
-} >> "$LOGFILE" 2>&1
+    $UNBUFFER emcc "${EMCC_Z3_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_JS_INPUTS[@]}" -o z3w.js
+} |& log
 
 say '* Z3 smt2 client: Linking'; {
     # emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2.js
-    emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
-} >> "$LOGFILE" 2>&1
+    $UNBUFFER emcc "${EMCC_Z3_SMT2_OPTIONS[@]}" "${EMCC_WASM_OPTIONS[@]}" "${EMCC_Z3_SMT2_JS_INPUTS[@]}" -o z3smt2w.js
+} |& log
 
 say ""
 say '*********************************'

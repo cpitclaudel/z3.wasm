@@ -15,7 +15,7 @@ Install `Vagrant <https://www.vagrantup.com/>`_, then run this::
 
    vagrant up
    vagrant ssh
-   /vagrant/z3.sh
+   VAGRANT=true /vagrant/z3.sh
 
 A detailed log is written to ``provision.log``, with an outline printed to stdout.  The first build can take up to two hours (emscripten requires a custom build of LLVM, Z3 is large, and all of this is running in a VM).
 
