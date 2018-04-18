@@ -2,7 +2,7 @@
  ``z3.wasm``
 =============
 
-This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3/>`_ to WebAssembly using `emscripten <https://github.com/kripken/emscripten/>`_.  To make things more reproducible, the build script may be run in a `Vagrant <https://www.vagrantup.com/>` VM.
+This repo contains a build script to compile `Z3 <https://github.com/Z3Prover/z3/>`_ to WebAssembly using `emscripten <https://github.com/kripken/emscripten/>`_.  To make things more reproducible, the build script may be run in a `Vagrant <https://www.vagrantup.com/>`_ VM.
 
 Loading Z3 is fairly slow (~15 seconds on Chrome, though less than 1 second on Firefox), but verification typically is within a factor 2 to 5 of native performance.
 
