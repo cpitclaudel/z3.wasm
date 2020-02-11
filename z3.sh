@@ -197,7 +197,7 @@ EMCC_WASM_OPTIONS=(
     # Async compilation causes Firefox to infloop, repeatedly printing “still
     # waiting on run dependencies: dependency: wasm-instantiate”. We'll run
     # in a WebWorker anyway, so it wouldn't buy us much.
-    -s BINARYEN_ASYNC_COMPILATION=0)
+    -s WASM_ASYNC_COMPILATION=0)
 
 EMCC_Z3_JS_INPUTS=("${Z3_ROOT}build/z3.bc")
 EMCC_Z3_SMT2_JS_INPUTS=("${BASEDIR}z3smt2.c" "${Z3_ROOT}build/libz3.a")
