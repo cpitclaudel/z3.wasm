@@ -42,8 +42,10 @@ fi
 export OPTLEVEL=3
 export BUILDDIR="${BASEDIR}build/"
 export Z3_ROOT="${BUILDDIR}z3/"
-export EMSDK_ROOT="${BUILDDIR}emsdk-portable/"
+export Z3_RELEASE="4.7.1"
 export EMSCRIPTEN_TEMPDIR="/tmp/emscripten/"
+export EMSCRIPT_RELEASE="1.39.7"
+export EMSDK_ROOT="${BUILDDIR}emscripten-$EMSCRIPT_RELEASE/"
 
 function say() {
     printf "\033[1;32m%s\033[0m\n" "$1"
@@ -85,19 +87,20 @@ say '*******************'
 rm -rf "$BUILDDIR"
 mkdir "$BUILDDIR"
 
+
 say '* wget emscripten'; {
-    wget --quiet -O /tmp/emsdk-portable.tar.gz https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
-    tar -xf /tmp/emsdk-portable.tar.gz -C "$BUILDDIR"
+    git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$EMSDK_ROOT"
 }
 
 say '* git clone z3'; {
-    git clone --depth 1 --quiet https://github.com/Z3Prover/z3.git "$Z3_ROOT"
+    git clone --depth 1 --branch z3-$Z3_RELEASE --quiet https://github.com/Z3Prover/z3.git "$Z3_ROOT"
 }
 
 say ""
 say '****************'
 say '*** Building ***'
 say '****************'
+
 
 cd "$EMSDK_ROOT"
 
@@ -106,8 +109,8 @@ cd "$EMSDK_ROOT"
 
 say '* Emscripten: setup'; {
     ./emsdk update
-    ./emsdk install latest --build=Release
-    ./emsdk activate latest
+    ./emsdk install $EMSCRIPT_RELEASE --build=Release
+    ./emsdk activate $EMSCRIPT_RELEASE
 
     # Use incoming because of https://github.com/kripken/emscripten/pull/5239
     # ./emsdk install emscripten-incoming-32bit --build=Release
@@ -115,9 +118,6 @@ say '* Emscripten: setup'; {
 
     # Needed by emcc
     sed -i "s/NODE_JS *= *'\(.*\)'/NODE_JS=['\1','--stack_size=8192']/" ~/.emscripten
-
-    # Work around https://github.com/kripken/emscripten/pull/5967
-    sed -i 's/python %s/%s/g' "$EMSCRIPTEN/tools/shared.py"
 
     # Regenerate emsdk_set_env.sh
     ./emsdk construct_env ""
